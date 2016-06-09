@@ -1,0 +1,6 @@
+author: Cristian Gonzalez
+comments: These are the definitions to be used in the book.
+name: Default
+notes: '"items to represent informations have different colors, the important factor
+  for the lines is separed by geometry."'
+version: 5.0

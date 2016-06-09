@@ -1,0 +1,21 @@
+- name: remove borders
+  description: Removes the border of the plot box and make the tics use the linestyle gray (1)
+  code: [set border 0 linestyle 1]
+- name: Square size
+  description: sets the plot as a square
+  code: [set size square]
+- name: Format tics
+  description: sets the tics type '' for empty
+  code: [set format y '', set format x '']
+- name: Just XY tics
+  description: Removes the tics in the axes paralel to the original ones
+  code: ["set xtics axis in scale 0.5,0.25 mirror norotate  offset character 0, 0, 0 autojustify"," set ytics axis in scale 0.5,0.25 mirror norotate  offset character 0, 0, 0 autojustify"]
+- name: outside keys
+  description: Removes the tics in the axes paralel to the original ones
+  code: [set key samplen <X> spacing <y> inside|outsise top|bottom center|left|right horizontal|vertical]  
+- name: second Axis function
+  description: sets the second x axis as function of the first axis. usefull to plot with k vector and wavelenght
+  code: ["# function to relate axis","axis2(x)=1.0/x","# the connection itself", "set link x2 via axis2(x) inverse axis2(x)", "# range", "set x2range [ <x2_1> : <x2_2> ] noreverse nowriteback", "# tics ", "set x2tics <from>,<every>,<to>"]
+- name: Reverse axis
+  description: places the keys at the left and the text al the right
+  code: ["# inverse the keys with the text","#set key <position> <alignment> <text alighment> invert reverse","set key top right Left invert reverse"]
