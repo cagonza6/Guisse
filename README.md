@@ -1,5 +1,5 @@
 # Guisse: Gnuplot User Interpreter Suggested for Student's Experimentation
-
+## (see "dev" branch)  
 Guisse is just a small editor that helps to work with GNUplot. It does not provides GNUplot, it does not plot by itself, but it communicates with GNUplot in a very simple way. Therefore, it does require GNUplot in order to work.
 
 ## Considerations?
