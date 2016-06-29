@@ -12,7 +12,6 @@ from tools.Fig import fig2latexFriendly
 from ui.centralPanel import Ui_CentralPanel
 from Styles import openStyle, getStyles, generateTemplate
 import temporal
-import Config
 from Small_Editor import GNUplotHighlighter
 from Classes import ArrowStyle
 from Gplot import gnuplotVersion
@@ -50,7 +49,7 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 
 		self.ProjectData = False
 		self.fileFolder = False
-		self.GP = Gnuplot.Gnuplot(persist=1)
+
 		self.template = ''
 		self.loadStyles()
 		self.getstyle()
@@ -352,12 +351,8 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 		script += self.gettemplate() + '\n'
 		script += self.cleanScript() + '\n'
 
-		if Config.GNUPLOTPY:
-			self.GP(script)
-		else:
-			t_folder = '/tmp/script0.gnu'
-			writestring2File(t_folder, script)
-			self.GP_(t_folder, persist=True)
+		writestring2File(temporal.TEMP_FOLDER, script)
+		self.GP_(temporal.TEMP_FOLDER, persist=True)
 
 	def send2eps(self):
 		self.stringReplace()
@@ -373,7 +368,7 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 				script +="cd \""+temporal.PROJECTFILES['folder']+"\"\n"
 		script += 'set terminal postscript portrait enhanced color size ' + width + 'cm,' + height + 'cm "Times-Roman" 11 \n'
 
-		if not temporal.PROJECTFILES:
+		if not temporal.PROJECTFILES['folder'] or not temporal.PROJECTFILES['EPSoutput'] :
 			print "no target file"
 			return
 
@@ -391,7 +386,8 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 		script += 'set dashtype 5 "..-"' + '\n'
 
 		script += self.getScript()
-		self.GP(script)
+		writestring2File(temporal.TEMP_FOLDER, script)
+		self.GP_(temporal.TEMP_FOLDER)
 
 		if eps:
 			return
