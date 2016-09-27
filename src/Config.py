@@ -1,1 +1,0 @@
-GNUPLOTPY = False

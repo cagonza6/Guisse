@@ -3,6 +3,7 @@
 import json
 from tools.strings import lineconcatenate
 from tools.dictionaries import dic2sty
+import tools.paths as Path
 
 from Gplot import gnuplotVersion
 
@@ -17,7 +18,7 @@ manifest = {
 	"version": float(GPVERSION)
 }
 
-dic2sty(manifest, 'styles/default/manifest.txt')
+dic2sty(manifest, Path.makePath(['styles', 'default', 'manifest.txt']))
 
 BASECOLORS = ['#808080', '#0E3D59', '#88A61B', '#F29F05', '#F25C05', '#D92525']  # contrast
 BASECOLORNAME = ['Gray', 'Blue', 'Green', 'Yellow', 'Orange', 'Red']  # contrast
@@ -323,7 +324,7 @@ if __name__ == '__main__':
 			color = colors[i]
 			name = 'Line ' + names[i]
 			NewLineStyle(1 + i, linecolor=color, linetype=None, linewidth=0.3, comment=name)
-		dic2sty(GlobalDics, 'styles/default/lines.sty')
+		dic2sty(GlobalDics, Path.makePath(['styles', 'default', 'lines.sty']))
 
 	count = 1
 	if vectors:  # base arrowtype
@@ -345,7 +346,7 @@ if __name__ == '__main__':
 			dashN = DASHTYPENAME[i]
 			NewArrowStyle(i + count, heads='head', size='screen 0.04,15,45', head_style='noborder', plane='front', dashtype=dash, linestyle=i + count-1, comment='Type ' + str(i + 1) + ':' + str(dashN))
 		count += combinations
-		dic2sty(GlobalDics, 'styles/default/vectors.sty')
+		dic2sty(GlobalDics, Path.makePath(['styles', 'default', 'vectors.sty']))
 	vectors_end = count
 
 	if arrow_type:  # base arrowtype
@@ -359,7 +360,7 @@ if __name__ == '__main__':
 			name = EXTRACOLORNAME[i]
 			NewArrowStyle(count + i, heads='head', head_style='noborder', plane='front', dashtype=1, linestyle=vectors_end + i, comment='simple ' + name + ' line')
 		count += len(EXTRACOLORS)
-		dic2sty(GlobalDics, 'styles/default/arrows.sty')
+		dic2sty(GlobalDics, Path.makePath(['styles', 'default', 'arrows.sty']))
 
 	if lines_type:  # base arrowtype
 		'''
@@ -372,5 +373,5 @@ if __name__ == '__main__':
 			name = EXTRACOLORNAME[i]
 			NewArrowStyle(count + i, heads='nohead', head_style='empty', plane='front', dashtype=1, linestyle=vectors_end + i, comment='simple ' + name + ' line')
 		count += len(EXTRACOLORS)
-		dic2sty(GlobalDics, 'styles/default/lines_raw.sty')
+		dic2sty(GlobalDics, Path.makePath(['styles', 'default', 'lines_raw.sty']))
 	print "Total elements created: ", count

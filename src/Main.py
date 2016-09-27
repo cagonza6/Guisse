@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import checks
 import sip
 sip.setapi('QVariant', 2)
 from PyQt4 import QtGui
@@ -7,7 +8,6 @@ from CentralPanel import CentralPanel
 import temporal
 import parser
 from SearchFile import PathMethods
-from tools.dictionaries import dic2str
 from tools.files import writestring2File, Readfile_string
 import tools.paths as Path
 
@@ -24,10 +24,10 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow, PathMethods):
 		self.actionSave.triggered.connect(self.saveProject)
 
 	def setLastPath(self, path):
-		writestring2File('temp/lastpath.txt', path.strip())
+		writestring2File(temporal.USER_LAST_FILES, path.strip())
 
 	def getLastPath(self):
-		lastPath = Readfile_string('temp/lastpath.txt')
+		lastPath = Readfile_string(temporal.USER_LAST_FILES)
 		if not lastPath:
 			return ''
 		return lastPath.strip()
@@ -41,7 +41,7 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow, PathMethods):
 		else:
 			path = str(QtGui.QFileDialog.getSaveFileName(self, "Select Directory", self.getLastPath(), '(*.plt)'))
 			if path and '.plt' not in path:
-				path = path.strip()+'.plt'
+				path = path.strip() + '.plt'
 		pathData = Path.getPathData(path)
 
 		return pathData
@@ -50,7 +50,6 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow, PathMethods):
 		print "Starting New File"
 		self.openFile(new_=True)
 
-
 	def openFile(self, new_=False):
 		temporal.PROJECTFILES = {}
 		if not new_:
@@ -58,7 +57,7 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow, PathMethods):
 		pathData = self.checkFile(new=not new_)
 
 		if new_:
-			writestring2File(pathData['mainPath'],'')
+			writestring2File(pathData['mainPath'], '')
 
 		temporal.PROJECTFILES = pathData
 		if not pathData:
@@ -73,9 +72,11 @@ class MainWindow(QtGui.QMainWindow, Ui_MainWindow, PathMethods):
 
 if __name__ == '__main__':
 
+	checks.checkDirs()
+	checks.checkRequirements()
 	import sys
 	app = QtGui.QApplication(sys.argv)
-	app.setApplicationName('GNUPletes')
+	app.setApplicationName('Guisse')
 	app.setApplicationVersion('Alpha - 0.1')
 	window = MainWindow()
 	window.show()

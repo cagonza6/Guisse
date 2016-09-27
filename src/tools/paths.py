@@ -1,6 +1,5 @@
 import os
 
-
 def getPathData(path):
 	'''
 	This method returns the data from the given path
@@ -40,4 +39,8 @@ def str2path(str_):
 
 
 def folderPlusFile(folder, file_):
-	return str2path(folder + '/' + file_)
+	return makePath([folder, file_])
+
+
+def makePath(components):
+	return os.path.join(*components)

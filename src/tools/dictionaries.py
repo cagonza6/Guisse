@@ -24,3 +24,10 @@ def file2dic(path):
 
 def dic2str(dict_):
 	return yaml.dump(dict_, default_flow_style=False)
+
+
+def existsKeyInDictionary(key,dict_):
+	if dict_.keys():
+		if key in dict_.keys():
+			return True
+	return False

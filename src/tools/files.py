@@ -2,7 +2,6 @@
 import os
 from django.utils.encoding import smart_str  # , smart_unicode
 
-
 def writestring2File(file_, string):
 	if os.path.isfile(file_) and not os.access(file_, os.R_OK):
 		print "\t\tError: at saving"
@@ -48,20 +47,3 @@ def getFolders(pathbase):
 			folder = os.path.join(dirpath, folder).strip()
 			fodlers.append(folder)
 	return fodlers
-
-
-'''
-def getFolders(pathbase):
-	fodlers=[]
-	for dirpath, dirnames, filenames in os.walk(pathbase):
-		for filename in [f for f in filenames ]:
-			fodlers.append(dirpath)
-	return fodlers
-
-
-def getFolders(pathbase):
-	folders=[]
-	for dirpath in os.walk(pathbase):
-		folders.append(dirpath)[0]
-	return folders
-'''

@@ -1,8 +1,8 @@
-{
-    "replacements":"[[\"a\", \"4\"], [\"sin(x)\", \"$\\\\sin(2x)x\\\\int_0^1$\"]]",
-    "template":"styles/default",
-    "EPSoutput":"canon.eps",
-    "file":"canon.gnu",
-    "FIGoutput":"canon.fig",
-    "size":[12,7.5]
-}
+FIGoutput: canon
+autoplot: false
+replacements: []
+size:
+- 12.0
+- 7.5
+template: styles/default
+xfig: true

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import Gnuplot
 import subprocess
 import shlex
 import re
@@ -10,6 +9,7 @@ from tools.files import Readfile_string, writestring2File, Readfile
 from tools.dictionaries import dic2file
 from tools.Fig import fig2latexFriendly
 from ui.centralPanel import Ui_CentralPanel
+from treeFunctions import TreeWiews
 from Styles import openStyle, getStyles, generateTemplate
 import temporal
 from Small_Editor import GNUplotHighlighter
@@ -21,7 +21,7 @@ GPVERSION = gnuplotVersion()
 CURRENT_LINE_HL = QtGui.QColor(200, 205, 0, 70)
 
 
-class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
+class CentralPanel(QtGui.QWidget, Ui_CentralPanel, TreeWiews):
 	def __init__(self, parent=None):
 		super(CentralPanel, self).__init__()
 		self.setupUi(self)
@@ -30,14 +30,17 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 		self.connect(self.btn_reloadStyle, QtCore.SIGNAL("clicked()"), self.styleChanged)
 		self.connect(self.btn_show, QtCore.SIGNAL("clicked()"), self.plotScript)
 
+		# Butons
 		self.connect(self.btn_Eps, QtCore.SIGNAL("clicked()"), self.send2eps)
 		self.connect(self.btn_fig, QtCore.SIGNAL("clicked()"), self.send2fig)
 		self.connect(self.comboStyles, QtCore.SIGNAL("currentIndexChanged(int)"), self.styleChanged)
+		self.connect(self.btnNewRep, QtCore.SIGNAL("clicked()"), self.newReplacement)
 
 		# insert buttons
 		self.connect(self.cmb_Element, QtCore.SIGNAL("currentIndexChanged(int)"), self.GetElement)
 		self.connect(self.cmb_type, QtCore.SIGNAL("currentIndexChanged(int)"), self.GetType)
 		self.connect(self.btn_insert, QtCore.SIGNAL("clicked()"), self.insert_code)
+		self.connect(self.btnClean, QtCore.SIGNAL("clicked()"), self.cleanReplacements)
 
 		self.customSizes = [
 			['5x5', [5, 5]],
@@ -69,21 +72,64 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 		self.repLabel = []
 		self.replacements = []
 
-	def GP_(self, script_path, persist=False):
-		commands = 'gnuplot '
-		if persist:
-			commands += '-p '
-		commands += '"' + script_path.strip() + '"'
-		commands = shlex.split(commands)
-		console = '-'
+		self.proxyModelReplacements = QtGui.QSortFilterProxyModel(self)
+		self.resetAll()
 
-		try:
-			console = subprocess.check_output(commands, stderr=subprocess.STDOUT)
-		except subprocess.CalledProcessError, console:
-			console = console.output
-			print "Error! at reading script"
-		print console
+	def resetAll(self):
+		self.setReplacements()
+		self.cleanReplacements()
 
+	# Replacements
+	'''
+	These set of methods control the behaviour of the replacements for
+	the LaTeX friendly outputs.
+	A replacements has two parts:
+		* original string and
+		* and its replacement.
+	The idea is to be used this option as latex friendly commands
+	that will be replaced in the final xfig.
+	'''
+	def newReplacement(self):
+		'''
+		Adds an empty line to write the replacements pair.
+		'''
+		self.addElement(self.model, [' ', ' '])
+
+	def cleanReplacements(self):
+		'''
+		Removes the empty lines from the existing replacements
+		'''
+		self.setReplacements(self.getReplacements())
+
+	def getReplacements(self):
+		'''
+		Return an array with the replacements as its elements in the
+		form [[original1, replacement1], [original1, replacement2],...]
+		'''
+		pairs = []
+		for i in range(0, self.model.rowCount()):
+			pair = [
+				self.model.data(self.model.index(i, 0)),
+				self.model.data(self.model.index(i, 1))
+			]
+			if pair[0] and pair[1] and str(pair[0]).strip() and str(pair[1]).strip():
+				pairs.append([str(pair[0]), str(pair[1])])
+		return pairs
+
+	def setReplacements(self, replacements=['']):
+		'''
+		Sets the given array with all the elements to the replacement
+		tree.
+		@input: array of replacements [[original1, replacement1], [original1, replacement2],...]
+		'''
+		self.setTreeDecorations(self.treeReplacements, True)
+		self.modelReplacements = self.createElementModel(replacements, [0, 1])
+		self.setHeaders(self.modelReplacements, ['Original', 'Replacement'])
+		self.setColumnWidth(self.treeReplacements, [100, 100])
+		self.proxyModelReplacements.setSourceModel(self.modelReplacements)
+		self.treeReplacements.setModel(self.proxyModelReplacements)
+
+	# Elements: this are the definitions from the template
 	def GetElement(self):
 		'''
 		Check what kind of element is selected and fills te item combo with the
@@ -115,6 +161,7 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 		highlighted_line.cursor.clearSelection()
 		self.field_script.setExtraSelections([highlighted_line, self.left_selected_bracket, self.right_selected_bracket])
 
+	# File events
 	def loadScript(self, path):
 		'''
 		Open the script located in the given path and
@@ -126,6 +173,43 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 		# here the labels are searched in order to make the replacements
 		self.stringReplace(script)
 
+	def saveProject(self):
+		'''
+		saves the script and the config file
+		'''
+		projectData = self.getProjectParams()
+
+		if False in [projectData, temporal.PROJECTFILES['folder'], temporal.PROJECTFILES['mainPath']]:
+			print "Error saving file"
+			return
+
+		dic2file(self.getProjectParams(), temporal.PROJECTFILES['mainPath'])
+		self.saveScript()
+
+	def saveScript(self):
+		# this method saves the script, but not the entire project
+		script = self.getScript().strip()
+		if not temporal.PROJECTFILES['scriptFile'] or not temporal.PROJECTFILES['scriptPath']:
+			print "Error saving s cript: saveScript"
+			return
+		writestring2File(temporal.PROJECTFILES['scriptPath'], script)
+
+	def openFile(self, configData):
+		self.resetAll()
+		if not configData:
+			print "TODO: clean window!!"
+			return False
+
+		self.fillFields(configData)
+		temporal.PROJECTFILES['scriptFile'] = configData['scriptFile']
+		temporal.PROJECTFILES['scriptPath'] = Path.folderPlusFile(temporal.PROJECTFILES['folder'], temporal.PROJECTFILES['scriptFile'])
+		self.loadScript(temporal.PROJECTFILES['scriptPath'])
+
+	def reLoadScript(self):
+		if 'scriptPath' in temporal.PROJECTFILES.keys() and temporal.PROJECTFILES['scriptPath']:
+			self.loadScript(temporal.PROJECTFILES['scriptPath'])
+
+	# Project Parameters
 	def getFigSize(self):
 		'''
 		gets the plot sise for the figure out of the ui
@@ -155,45 +239,25 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 		'''
 		projectData = {}
 		projectData['template'] = str(self.comboStyles.itemData(self.comboStyles.currentIndex()))
-		projectData['FIGoutput'] = str(self.fieldFIG.text())
-		projectData['EPSoutput'] = str(self.fieldEPS.text())
-		projectData['scriptFile'] = temporal.PROJECTFILES['scriptFile']
+		projectData['FIGoutput'] = str(self.fieldOutputName.text())
 		projectData['size'] = self.getFigSize()
 		projectData['replacements'] = self.getReplacements()
+		self.cleanReplacements()
 		projectData['xfig'] = self.getXfigCompatible()
 		projectData['autoplot'] = self.getXfigAutoShow()
 
 		return projectData
 
-	def saveProject(self):
-		'''
-		saves the script and the config file
-		'''
-		projectData = self.getProjectParams()
+	def getScript(self):
+		return smart_str(self.field_script.toPlainText())
 
-		if False in [projectData, temporal.PROJECTFILES['folder'], temporal.PROJECTFILES['mainPath']]:
-			print "Error saving file"
-			return
-
-		dic2file(self.getProjectParams(), temporal.PROJECTFILES['mainPath'])
-		self.saveScript()
-
-	def saveScript(self):
-		# this method saves the script, but not the entire project
-		script = self.getScript().strip()
-		if not temporal.PROJECTFILES['scriptFile'] or not temporal.PROJECTFILES['scriptPath']:
-			print "Error saving s cript: saveScript"
-			return
-		projectData = self.getProjectParams()
-		writestring2File(temporal.PROJECTFILES['scriptPath'], script)
-
+	# Interface: fill functions
 	def fillFields(self, configData):
 		'''
 		Fills all the required parameters from the project
 		it includes the template
 		'''
-		self.fieldEPS.setText(configData['EPSoutput'])
-		self.fieldFIG.setText(configData['FIGoutput'])
+		self.fieldOutputName.setText(configData['FIGoutput'])
 		self.field_path.setText(configData['scriptFile'])
 		self.latexLabel.setChecked(configData['xfig'])
 
@@ -201,7 +265,8 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 
 		# replacements
 		replacements = configData['replacements']
-		self.repl_field.setPlainText(self.replacement2text(replacements))
+		self.setReplacements(replacements)
+
 		if replacements:
 			for replace in replacements:
 				if len(replace) < 2:
@@ -227,29 +292,6 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 			self.figHeight.setValue(size[1])
 		return
 
-	def openFile(self, configData):
-		if not configData:
-			print "TODO: clean window!!"
-			return False
-
-		self.fillFields(configData)
-		temporal.PROJECTFILES['scriptFile'] = configData['scriptFile']
-		temporal.PROJECTFILES['scriptPath'] = Path.folderPlusFile(temporal.PROJECTFILES['folder'], temporal.PROJECTFILES['scriptFile'])
-		self.loadScript(temporal.PROJECTFILES['scriptPath'])
-
-	def replacement2text(self, replacements):
-		str_ = ''
-		if not replacements:
-			return ''
-		for rep in replacements:
-			line = ':'.join(rep)
-			str_ += line + '\n'
-		return str_
-
-	def reLoadScript(self):
-		if temporal.PROJECTFILES['scriptPath']:
-			self.loadScript(temporal.PROJECTFILES['scriptPath'])
-
 	def styleChanged(self):
 		folder = str(self.comboStyles.itemData(self.comboStyles.currentIndex()))
 		print "changed Style ", folder
@@ -258,14 +300,6 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 			print "Style not found"
 		self.template = generateTemplate(style)
 		self.loadTemplate(style)
-
-	def loadTemplate(self, style):
-		self.cmb_Element.clear()
-		self.cmb_type.clear()
-		self.cmb_Element.addItem('Vectors', self.setType_(style['style_vectors']))
-		self.cmb_Element.addItem('Arrows', self.setType_(style['style_arrows']))
-		self.cmb_Element.addItem('Lines', self.setType_(style['lines_raw']))
-		self.cmb_Element.addItem('Others', self.setcommands(style['commands']))
 
 	def setType_(self, items):
 		dataPair = []
@@ -295,12 +329,7 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 			dataPair.append(pair)
 		return dataPair
 
-	def gettemplate(self):
-		return self.template
-
-	def getScript(self):
-		return smart_str(self.field_script.toPlainText())
-
+	# Plot related methods
 	def insert_code(self):
 		new = self.field_script.toPlainText() + '\n' + str(self.cmb_type.itemData(self.cmb_type.currentIndex()))
 		self.field_script.setPlainText(new)
@@ -345,14 +374,14 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 		script = 'reset \n'
 		if temporal.PROJECTFILES:
 			if isinstance(temporal.PROJECTFILES['folder'], str):
-				script +="cd \""+temporal.PROJECTFILES['folder']+"\"\n"
+				script += "cd \"" + temporal.PROJECTFILES['folder'] + "\"\n"
 		if GPVERSION < 5.0:
 			script += 'set termoption dash \n'
 		script += self.gettemplate() + '\n'
 		script += self.cleanScript() + '\n'
 
-		writestring2File(temporal.TEMP_FOLDER, script)
-		self.GP_(temporal.TEMP_FOLDER, persist=True)
+		writestring2File(temporal.TEMP_SCRIPT, script)
+		self.GP_(temporal.TEMP_SCRIPT, persist=True)
 
 	def send2eps(self):
 		self.stringReplace()
@@ -365,34 +394,36 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 		height = str(size[1])
 		if temporal.PROJECTFILES:
 			if isinstance(temporal.PROJECTFILES['folder'], str):
-				script +="cd \""+temporal.PROJECTFILES['folder']+"\"\n"
+				script += "cd \"" + temporal.PROJECTFILES['folder'] + "\"\n"
 		script += 'set terminal postscript portrait enhanced color size ' + width + 'cm,' + height + 'cm "Times-Roman" 11 \n'
 
-		if not temporal.PROJECTFILES['folder'] or not temporal.PROJECTFILES['EPSoutput'] :
+		if not temporal.PROJECTFILES:
 			print "no target file"
 			return
 
 		if eps:
-			epsOutput = '\"' + Path.folderPlusFile(temporal.PROJECTFILES['folder'], self.getProjectParams()['EPSoutput']) + '\"'
+			epsOutput = '\"' + Path.folderPlusFile(temporal.PROJECTFILES['folder'], self.getProjectParams()['FIGoutput'] + '.eps') + '\"'
 		else:
-			epsOutput = '\"' + Path.str2path("temp/temp.eps") + '\"'
+			epsOutput = '\"' + Path.str2path(temporal.TEMP_EPS) + '\"'
 
 		script += 'set output ' + epsOutput + ' \n'
 		script += self.gettemplate() + '\n'
-#		script += 'set dashtype 1 "_"' + '\n'
+		# script += 'set dashtype 1 "_"' + '\n'
 		script += 'set dashtype 2 "_"' + '\n'
 		script += 'set dashtype 3 (0.0,0.1,0.1,0.1)' + '\n'
 		script += 'set dashtype 4 ".-' + '\n'
 		script += 'set dashtype 5 "..-"' + '\n'
 
 		script += self.getScript()
-		writestring2File(temporal.TEMP_FOLDER, script)
-		self.GP_(temporal.TEMP_FOLDER)
+		writestring2File(temporal.TEMP_SCRIPT, script)
+		self.GP_(temporal.TEMP_SCRIPT)
 
 		if eps:
 			return
 
 		figOutput = Path.folderPlusFile(temporal.PROJECTFILES['folder'], self.getProjectParams()['FIGoutput'])
+		if not eps:
+			figOutput += '.fig'
 		command = 'pstoedit ' + epsOutput + ' -dis -f fig ' + figOutput
 		command = shlex.split(command)
 		subprocess.check_output(command)
@@ -400,18 +431,7 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 		if self.getXfigCompatible():
 			self.fig2Friendly(figOutput)
 		if self.getXfigAutoShow():
-			subprocess.check_call(['xfig '+figOutput], shell=True)
-
-	def getReplacements(self):
-		modifications = []
-		changes = str(self.repl_field.toPlainText())
-		changes = changes.split('\n')
-
-		for change in changes:
-			change = change.split(':')
-			if len(change) > 1:
-				modifications.append(change)
-		return modifications
+			subprocess.check_call(['xfig ' + figOutput], shell=True)
 
 	def fig2Friendly(self, path):
 		fig = Readfile(path)
@@ -419,15 +439,43 @@ class CentralPanel(QtGui.QWidget, Ui_CentralPanel):
 		newScript = fig2latexFriendly(fig, changes)
 		writestring2File(path, newScript)
 
+	def GP_(self, script_path, persist=False):
+		commands = 'gnuplot '
+		if persist:
+			commands += '-p '
+		commands += '"' + script_path.strip() + '"'
+		commands = shlex.split(commands)
+		console = '-'
+
+		try:
+			console = subprocess.check_output(commands, stderr=subprocess.STDOUT)
+		except subprocess.CalledProcessError, console:
+			console = console.output
+			print "Error! at reading script"
+		print console
+
+
+	# Style related methods
+	def loadTemplate(self, style):
+		self.cmb_Element.clear()
+		self.cmb_type.clear()
+		self.cmb_Element.addItem('Vectors', self.setType_(style['style_vectors']))
+		self.cmb_Element.addItem('Arrows', self.setType_(style['style_arrows']))
+		self.cmb_Element.addItem('Lines', self.setType_(style['lines_raw']))
+		self.cmb_Element.addItem('Others', self.setcommands(style['commands']))
+
+	def gettemplate(self):
+		return self.template
+
+	def getstyle(self):
+		self.Style = openStyle()
+
 	def loadStyles(self):
 		Styles = getStyles()
 		for style in Styles:
 			path = style[0]
 			name = style[1]['name']
 			self.comboStyles.addItem(name, path)  # text to show in the combobox
-
-	def getstyle(self):
-		self.Style = openStyle()
 
 	def getFolderStyle(self):
 		return str(self.comboStyles.itemData(self.comboStyles.currentIndex()))
